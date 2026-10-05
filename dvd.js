@@ -1,42 +1,148 @@
-let x = 0,
-  y = 0,
-  dirX = 1,
-  dirY = 1;
-const speed = 2;
-const pallete = ["#ff8800", "#e124ff", "#6a19ff", "#ff2188"];
-let dvd = document.getElementById("dvd");
-dvd.style.backgroundColor = pallete[0];
-let prevColorChoiceIndex = 0;
-let black = document.getElementById("black");
-const dvdWidth = dvd.clientWidth;
-const dvdHeight = dvd.clientHeight;
+"""Bouncing DVD Logo, by Al Sweigart al@inventwithpython.com
+A bouncing DVD logo animation. You have to be "of a certain age" to
+appreciate this. Press Ctrl-C to stop.
 
-function getNewRandomColor() {
-  const currentPallete = [...pallete]
-  currentPallete.splice(prevColorChoiceIndex,1)
-  const colorChoiceIndex = Math.floor(Math.random() * currentPallete.length);
-  prevColorChoiceIndex = colorChoiceIndex<prevColorChoiceIndex?colorChoiceIndex:colorChoiceIndex+1;
-  const colorChoice = currentPallete[colorChoiceIndex];
-  return colorChoice;
-}
-function animate() {
-  const screenHeight = document.body.clientHeight;
-  const screenWidth = document.body.clientWidth;
+NOTE: Do not resize the terminal window while this program is running.
+This code is available at https://nostarch.com/big-book-small-python-programming
+Tags: short, artistic, bext"""
 
-  if (y + dvdHeight >= screenHeight || y < 0) {
-    dirY *= -1;
-    dvd.style.backgroundColor = getNewRandomColor();
-  }
-  if (x + dvdWidth >= screenWidth || x < 0) {
-    dirX *= -1;
+import sys, random, time
 
-    dvd.style.backgroundColor = getNewRandomColor();
-  }
-  x += dirX * speed;
-  y += dirY * speed;
-  dvd.style.left = x + "px";
-  dvd.style.top = y + "px";
-  window.requestAnimationFrame(animate);
-}
+try:
+    import bext
+except ImportError:
+    print('This program requires the bext module, which you')
+    print('can install by following the instructions at')
+    print('https://pypi.org/project/Bext/')
+    sys.exit()
 
-window.requestAnimationFrame(animate);
+# Set up the constants:
+WIDTH, HEIGHT = bext.size()
+# We can't print to the last column on Windows without it adding a
+# newline automatically, so reduce the width by one:
+WIDTH -= 1
+
+NUMBER_OF_LOGOS = 5  # (!) Try changing this to 1 or 100.
+PAUSE_AMOUNT = 0.2  # (!) Try changing this to 1.0 or 0.0.
+# (!) Try changing this list to fewer colors:
+COLORS = ['red', 'green', 'yellow', 'blue', 'magenta', 'cyan', 'white']
+
+UP_RIGHT   = 'ur'
+UP_LEFT    = 'ul'
+DOWN_RIGHT = 'dr'
+DOWN_LEFT  = 'dl'
+DIRECTIONS = (UP_RIGHT, UP_LEFT, DOWN_RIGHT, DOWN_LEFT)
+
+# Key names for logo dictionaries:
+COLOR = 'color'
+X = 'x'
+Y = 'y'
+DIR = 'direction'
+
+
+def main():
+    bext.clear()
+
+    # Generate some logos.
+    logos = []
+    for i in range(NUMBER_OF_LOGOS):
+        logos.append({COLOR: random.choice(COLORS),
+                      X: random.randint(1, WIDTH - 4),
+                      Y: random.randint(1, HEIGHT - 4),
+                      DIR: random.choice(DIRECTIONS)})
+        if logos[-1][X] % 2 == 1:
+            # Make sure X is even so it can hit the corner.
+            logos[-1][X] -= 1
+
+    cornerBounces = 0  # Count how many times a logo hits a corner.
+    while True:  # Main program loop.
+        for logo in logos:  # Handle each logo in the logos list.
+            # Erase the logo's current location:
+            bext.goto(logo[X], logo[Y])
+            print('   ', end='')  # (!) Try commenting this line out.
+
+            originalDirection = logo[DIR]
+
+            # See if the logo bounces off the corners:
+            if logo[X] == 0 and logo[Y] == 0:
+                logo[DIR] = DOWN_RIGHT
+                cornerBounces += 1
+            elif logo[X] == 0 and logo[Y] == HEIGHT - 1:
+                logo[DIR] = UP_RIGHT
+                cornerBounces += 1
+            elif logo[X] == WIDTH - 3 and logo[Y] == 0:
+                logo[DIR] = DOWN_LEFT
+                cornerBounces += 1
+            elif logo[X] == WIDTH - 3 and logo[Y] == HEIGHT - 1:
+                logo[DIR] = UP_LEFT
+                cornerBounces += 1
+
+            # See if the logo bounces off the left edge:
+            elif logo[X] == 0 and logo[DIR] == UP_LEFT:
+                logo[DIR] = UP_RIGHT
+            elif logo[X] == 0 and logo[DIR] == DOWN_LEFT:
+                logo[DIR] = DOWN_RIGHT
+
+            # See if the logo bounces off the right edge:
+            # (WIDTH - 3 because 'DVD' has 3 letters.)
+            elif logo[X] == WIDTH - 3 and logo[DIR] == UP_RIGHT:
+                logo[DIR] = UP_LEFT
+            elif logo[X] == WIDTH - 3 and logo[DIR] == DOWN_RIGHT:
+                logo[DIR] = DOWN_LEFT
+
+            # See if the logo bounces off the top edge:
+            elif logo[Y] == 0 and logo[DIR] == UP_LEFT:
+                logo[DIR] = DOWN_LEFT
+            elif logo[Y] == 0 and logo[DIR] == UP_RIGHT:
+                logo[DIR] = DOWN_RIGHT
+
+            # See if the logo bounces off the bottom edge:
+            elif logo[Y] == HEIGHT - 1 and logo[DIR] == DOWN_LEFT:
+                logo[DIR] = UP_LEFT
+            elif logo[Y] == HEIGHT - 1 and logo[DIR] == DOWN_RIGHT:
+                logo[DIR] = UP_RIGHT
+
+            if logo[DIR] != originalDirection:
+                # Change color when the logo bounces:
+                logo[COLOR] = random.choice(COLORS)
+
+            # Move the logo. (X moves by 2 because the terminal
+            # characters are twice as tall as they are wide.)
+            if logo[DIR] == UP_RIGHT:
+                logo[X] += 2
+                logo[Y] -= 1
+            elif logo[DIR] == UP_LEFT:
+                logo[X] -= 2
+                logo[Y] -= 1
+            elif logo[DIR] == DOWN_RIGHT:
+                logo[X] += 2
+                logo[Y] += 1
+            elif logo[DIR] == DOWN_LEFT:
+                logo[X] -= 2
+                logo[Y] += 1
+
+        # Display number of corner bounces:
+        bext.goto(5, 0)
+        bext.fg('white')
+        print('Corner bounces:', cornerBounces, end='')
+
+        for logo in logos:
+            # Draw the logos at their new location:
+            bext.goto(logo[X], logo[Y])
+            bext.fg(logo[COLOR])
+            print('DVD', end='')
+
+        bext.goto(0, 0)
+
+        sys.stdout.flush()  # (Required for bext-using programs.)
+        time.sleep(PAUSE_AMOUNT)
+
+
+# If this program was run (instead of imported), run the game:
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        print()
+        print('Bouncing DVD Logo, by Al Sweigart')
+        sys.exit()  # When Ctrl-C is pressed, end the program.
